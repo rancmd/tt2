@@ -137,28 +137,56 @@ document.getElementById('openHistory').addEventListener('click', () => {
   historyOverlay.classList.add('show');
 });
 
-const dragHandle = document.getElementById('dragHandle');
+// Drag anywhere on the overlay to close (not just the top handle, since
+// dragging near the very top of the screen conflicts with iOS's
+// Notification Center / Control Center swipe gesture). Only kicks in
+// when the log list is scrolled to the top, so it never fights with
+// normal list scrolling.
 let dragStartY = null;
+let dragStartScrollTop = 0;
+let isDragging = false;
 let dragCurrentY = 0;
 
-dragHandle.addEventListener('touchstart', (e) => {
+historyOverlay.addEventListener('touchstart', (e) => {
+  if (e.target.closest('.delete-btn') || e.target.closest('.reset-btn')) {
+    dragStartY = null;
+    return;
+  }
   dragStartY = e.touches[0].clientY;
-  historyOverlay.classList.add('dragging');
+  dragStartScrollTop = logList.scrollTop;
+  isDragging = false;
 }, { passive: true });
 
-dragHandle.addEventListener('touchmove', (e) => {
+historyOverlay.addEventListener('touchmove', (e) => {
   if (dragStartY === null) return;
-  dragCurrentY = Math.max(0, e.touches[0].clientY - dragStartY);
-  historyOverlay.style.transform = `translateY(${dragCurrentY}px)`;
-}, { passive: true });
+  const dy = e.touches[0].clientY - dragStartY;
 
-dragHandle.addEventListener('touchend', () => {
-  historyOverlay.classList.remove('dragging');
-  historyOverlay.style.transform = '';
-  if (dragCurrentY > 90) {
-    historyOverlay.classList.remove('show');
+  if (!isDragging) {
+    // Only begin a drag-to-close once the user pulls down while the
+    // list is already at its top; otherwise let normal scroll happen.
+    if (dy > 8 && dragStartScrollTop <= 0) {
+      isDragging = true;
+      historyOverlay.classList.add('dragging');
+    } else {
+      return;
+    }
+  }
+
+  e.preventDefault();
+  dragCurrentY = Math.max(0, dy);
+  historyOverlay.style.transform = `translateY(${dragCurrentY}px)`;
+}, { passive: false });
+
+historyOverlay.addEventListener('touchend', () => {
+  if (isDragging) {
+    historyOverlay.classList.remove('dragging');
+    historyOverlay.style.transform = '';
+    if (dragCurrentY > 90) {
+      historyOverlay.classList.remove('show');
+    }
   }
   dragStartY = null;
+  isDragging = false;
   dragCurrentY = 0;
 });
 

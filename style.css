@@ -285,7 +285,6 @@ body {
   justify-content: center;
   padding: 6px 0 10px;
   flex-shrink: 0;
-  touch-action: none;
 }
 .drag-handle span {
   width: 40px;
