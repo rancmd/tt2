@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'timelog_v3';
+const STORAGE_KEY = 'timelog_v4';
 const DAILY_LIMIT = 240; // minutes (4 hours)
 
 const CATEGORIES = {
@@ -45,13 +45,18 @@ function formatTime(ts) {
   return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+const logButtons = document.querySelectorAll('.log-btn');
+
 function render() {
   const used = state.entries.reduce((sum, e) => sum + e.minutes, 0);
   const remaining = Math.max(0, DAILY_LIMIT - used);
+  const limitReached = remaining === 0;
 
   totalValue.innerHTML = remaining + '<span>min</span>';
   totalSub.textContent = used + ' of ' + DAILY_LIMIT + ' min used today';
-  totalCard.classList.toggle('limit-reached', remaining === 0);
+  totalCard.classList.toggle('limit-reached', limitReached);
+
+  logButtons.forEach(btn => btn.classList.toggle('disabled', limitReached));
 
   // history entry button preview
   if (!state.entries.length) {
@@ -72,7 +77,7 @@ function render() {
     .map(e => {
       const cat = CATEGORIES[e.category] || CATEGORIES.tv;
       return `
-      <div class="log-item">
+      <div class="log-item" data-id="${e.id}">
         <span class="left">
           <span class="cat-icon">${cat.icon}</span>
           <span>
@@ -80,14 +85,30 @@ function render() {
             <span class="dur">${e.minutes} min</span>
           </span>
         </span>
-        <span class="time">${formatTime(e.ts)}</span>
+        <span class="right">
+          <span class="time">${formatTime(e.ts)}</span>
+          <button class="delete-btn" data-id="${e.id}" aria-label="Delete entry">✕</button>
+        </span>
       </div>
     `;
     }).join('');
+
+  logList.querySelectorAll('.delete-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteEntry(btn.dataset.id));
+  });
+}
+
+function deleteEntry(id) {
+  state.entries = state.entries.filter(e => String(e.id) !== String(id));
+  saveState(state);
+  render();
+  if (navigator.vibrate) navigator.vibrate(6);
 }
 
 function logMinutes(min, btnEl) {
-  state.entries.push({ minutes: min, category: activeCat, ts: Date.now() });
+  const used = state.entries.reduce((sum, e) => sum + e.minutes, 0);
+  if (used >= DAILY_LIMIT) return;
+  state.entries.push({ id: Date.now() + '-' + Math.random().toString(36).slice(2, 7), minutes: min, category: activeCat, ts: Date.now() });
   saveState(state);
   render();
   btnEl.classList.add('flash');
@@ -95,8 +116,11 @@ function logMinutes(min, btnEl) {
   if (navigator.vibrate) navigator.vibrate(8);
 }
 
-document.querySelectorAll('.log-btn').forEach(btn => {
-  btn.addEventListener('click', () => logMinutes(parseInt(btn.dataset.min, 10), btn));
+logButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.classList.contains('disabled')) return;
+    logMinutes(parseInt(btn.dataset.min, 10), btn);
+  });
 });
 
 catRow.querySelectorAll('.cat-btn').forEach(btn => {
@@ -112,8 +136,30 @@ catRow.querySelectorAll('.cat-btn').forEach(btn => {
 document.getElementById('openHistory').addEventListener('click', () => {
   historyOverlay.classList.add('show');
 });
-document.getElementById('closeHistory').addEventListener('click', () => {
-  historyOverlay.classList.remove('show');
+
+const dragHandle = document.getElementById('dragHandle');
+let dragStartY = null;
+let dragCurrentY = 0;
+
+dragHandle.addEventListener('touchstart', (e) => {
+  dragStartY = e.touches[0].clientY;
+  historyOverlay.classList.add('dragging');
+}, { passive: true });
+
+dragHandle.addEventListener('touchmove', (e) => {
+  if (dragStartY === null) return;
+  dragCurrentY = Math.max(0, e.touches[0].clientY - dragStartY);
+  historyOverlay.style.transform = `translateY(${dragCurrentY}px)`;
+}, { passive: true });
+
+dragHandle.addEventListener('touchend', () => {
+  historyOverlay.classList.remove('dragging');
+  historyOverlay.style.transform = '';
+  if (dragCurrentY > 90) {
+    historyOverlay.classList.remove('show');
+  }
+  dragStartY = null;
+  dragCurrentY = 0;
 });
 
 // reset flow
