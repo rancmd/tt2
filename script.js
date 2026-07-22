@@ -32,6 +32,7 @@ let activeCat = 'tv';
 
 const totalCard = document.getElementById('totalCard');
 const totalValue = document.getElementById('totalValue');
+const totalHours = document.getElementById('totalHours');
 const totalSub = document.getElementById('totalSub');
 const logList = document.getElementById('logList');
 const dateLabel = document.getElementById('dateLabel');
@@ -45,6 +46,13 @@ function formatTime(ts) {
   return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
+function formatHours(minutes) {
+  const hours = minutes / 60;
+  let str = hours.toFixed(2).replace(/\.?0+$/, '');
+  if (str === '' || str === '-') str = '0';
+  return str + 'h';
+}
+
 const logButtons = document.querySelectorAll('.log-btn');
 
 function render() {
@@ -53,6 +61,7 @@ function render() {
   const limitReached = remaining === 0;
 
   totalValue.innerHTML = remaining + '<span>min</span>';
+  totalHours.textContent = '≈ ' + formatHours(remaining);
   totalSub.textContent = used + ' of ' + DAILY_LIMIT + ' min used today';
   totalCard.classList.toggle('limit-reached', limitReached);
 

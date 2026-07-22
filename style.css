@@ -126,6 +126,17 @@ body {
   margin-left: 6px;
 }
 
+.total-hours {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--moss);
+  margin-top: 6px;
+  position: relative;
+  letter-spacing: 0.01em;
+}
+
+.total-card.limit-reached .total-hours { color: var(--rust); }
+
 .total-sub {
   font-size: 13px;
   color: var(--ink-soft);
